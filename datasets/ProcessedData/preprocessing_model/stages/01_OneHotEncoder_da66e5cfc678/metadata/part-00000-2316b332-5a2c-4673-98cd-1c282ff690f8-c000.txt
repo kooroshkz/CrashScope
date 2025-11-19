@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoderModel","timestamp":1763556740346,"sparkVersion":"4.0.1","uid":"OneHotEncoder_da66e5cfc678","paramMap":{"outputCol":"verkeersongeval_afloop_vec","inputCol":"verkeersongeval_afloop_idx"},"defaultParamMap":{"outputCol":"OneHotEncoder_da66e5cfc678__output","handleInvalid":"error","dropLast":true}}

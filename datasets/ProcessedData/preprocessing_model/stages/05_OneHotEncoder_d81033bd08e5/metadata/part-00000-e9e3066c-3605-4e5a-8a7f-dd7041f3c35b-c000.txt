@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoderModel","timestamp":1763556741173,"sparkVersion":"4.0.1","uid":"OneHotEncoder_d81033bd08e5","paramMap":{"inputCol":"bebouwde_kom_idx","outputCol":"bebouwde_kom_vec"},"defaultParamMap":{"outputCol":"OneHotEncoder_d81033bd08e5__output","handleInvalid":"error","dropLast":true}}
