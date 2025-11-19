@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.StringIndexerModel","timestamp":1763556740963,"sparkVersion":"4.0.1","uid":"StringIndexer_65bd09bb35f3","paramMap":{"inputCol":"bebouwde_kom","handleInvalid":"skip","outputCol":"bebouwde_kom_idx"},"defaultParamMap":{"handleInvalid":"error","stringOrderType":"frequencyDesc","outputCol":"StringIndexer_65bd09bb35f3__output"}}

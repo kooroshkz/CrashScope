@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.StringIndexerModel","timestamp":1763556741375,"sparkVersion":"4.0.1","uid":"StringIndexer_3e3a0cc896c6","paramMap":{"outputCol":"wegverlichting_idx","inputCol":"wegverlichting","handleInvalid":"skip"},"defaultParamMap":{"outputCol":"StringIndexer_3e3a0cc896c6__output","handleInvalid":"error","stringOrderType":"frequencyDesc"}}

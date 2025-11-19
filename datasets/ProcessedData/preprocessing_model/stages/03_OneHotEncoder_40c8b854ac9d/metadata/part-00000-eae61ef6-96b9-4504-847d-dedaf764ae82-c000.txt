@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoderModel","timestamp":1763556740757,"sparkVersion":"4.0.1","uid":"OneHotEncoder_40c8b854ac9d","paramMap":{"inputCol":"aard_ongeval_idx","outputCol":"aard_ongeval_vec"},"defaultParamMap":{"dropLast":true,"handleInvalid":"error","outputCol":"OneHotEncoder_40c8b854ac9d__output"}}

@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoderModel","timestamp":1763556741608,"sparkVersion":"4.0.1","uid":"OneHotEncoder_e41ba171f266","paramMap":{"inputCol":"wegverlichting_idx","outputCol":"wegverlichting_vec"},"defaultParamMap":{"dropLast":true,"outputCol":"OneHotEncoder_e41ba171f266__output","handleInvalid":"error"}}
