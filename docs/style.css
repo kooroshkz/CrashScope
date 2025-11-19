@@ -1,0 +1,5 @@
+html,body,#map{ height:100%; margin:0; padding:0; }
+#map{ position: absolute; left:300px; right:0; top:0; bottom:0; }
+#sidebar{ position: absolute; left:0; top:0; bottom:0; width:300px; padding:16px; box-sizing:border-box; background:#fff; overflow:auto; border-right:1px solid #ddd; }
+#sidebar h1{ font-size:18px; margin:0 0 8px; }
+.error{ background:rgba(255,0,0,0.05); padding:8px; border-radius:4px; }

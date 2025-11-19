@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CrashScope — Accidents Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="map"></div>
+  <div id="sidebar">
+    <h1>CrashScope — Accidents</h1>
+    <p>This page loads GeoJSON generated from the parquet dataset and plots points on an OpenStreetMap base layer.</p>
+    <p>Update and use:</p>
+    <ol>
+      <li>Run the converter: <code>python3 scripts/convert_parquet_to_geojson.py</code></li>
+    </ol>
+    <p>If you already have a GeoJSON at <code>docs/data/accidents_2022_2024_full.geojson</code>, it will be loaded directly.</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
