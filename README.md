@@ -14,7 +14,7 @@ With TomTom API we can see live trafic
 
 Sample curl request:
 ```bash
-curl "https://api.tomtom.com/traffic/services/5/incidentDetails?key=YOUR_TOMTOM_API_KEY&bbox=4.4,52.2,5.4,53.5&categoryFilter=1&timeValidityFilter=present"
+curl "https://api.tomtom.com/traffic/services/5/incidentDetails?key=<TomTomApiKey>&bbox=4.4,52.2,5.4,53.5&categoryFilter=1&timeValidityFilter=present"
 ```
 
 Python code:
