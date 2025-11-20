@@ -1,0 +1,158 @@
+[
+  {
+    "incident_metadata": {
+      "incident_id": "incident_52.1222_5.1169",
+      "source_region": 11,
+      "coordinates_display": "52.1222N, 5.1169E",
+      "timestamp": null,
+      "geometry_type": "LineString",
+      "geometry_points": 11
+    },
+    "location_analysis": {
+      "coordinates": {
+        "latitude": 52.1221903052,
+        "longitude": 5.1169426332
+      },
+      "area_classification": "Buiten",
+      "region": "Utrecht",
+      "road_infrastructure": {
+        "road_type": "service",
+        "speed_limit_kmh": 50,
+        "lanes": 2,
+        "surface_type": "asphalt",
+        "lighting_available": "unknown"
+      }
+    },
+    "environmental_conditions": {
+      "weather": {
+        "condition": "Droog",
+        "temperature_celsius": 2.7,
+        "precipitation_mm": 0.0,
+        "wind_speed_kmh": 11.9,
+        "weather_code": 0,
+        "is_wet_conditions": false
+      },
+      "temporal": {
+        "hour": 1,
+        "day_of_week": 3,
+        "month": 11,
+        "year": 2025,
+        "season": "Autumn",
+        "time_period": "Night",
+        "is_weekend": false,
+        "is_rush_hour": false,
+        "is_night_time": true
+      }
+    },
+    "risk_assessment": {
+      "overall_risk_score": 7,
+      "risk_level": "High",
+      "estimated_parties_involved": 2,
+      "lighting_conditions": "Duisternis",
+      "risk_factors": {
+        "speed_risk": "Low",
+        "weather_risk": "High",
+        "temporal_risk": "High",
+        "location_risk": "Medium",
+        "visibility_risk": "High"
+      }
+    },
+    "ml_ready_features": {
+      "lat": 52.1221903052,
+      "lon": 5.1169426332,
+      "aantal_partijen": 2,
+      "jaar": 2025,
+      "snelheid": 50,
+      "gebied": "Buiten",
+      "lichtgesteldheid": "Duisternis",
+      "wegsoort": "service",
+      "weather_condition": "Droog",
+      "temperature": 2.7,
+      "is_weekend": false,
+      "is_rush_hour": false
+    },
+    "complete_feature_set": {
+      "temperature": 2.7,
+      "precipitation": 0.0,
+      "wind_speed": 11.9,
+      "weather_code": 0,
+      "weather_condition": "Droog",
+      "is_wet": false,
+      "hour": 1,
+      "day_of_week": 3,
+      "month": 11,
+      "year": 2025,
+      "is_weekend": false,
+      "is_rush_hour": false,
+      "is_night": true,
+      "season": "Autumn",
+      "time_period": "Night",
+      "speed_limit": 50,
+      "road_type": "service",
+      "lanes": 2,
+      "surface": "asphalt",
+      "lit": "unknown",
+      "area_type": "Buiten",
+      "lat": 52.1221903052,
+      "lon": 5.1169426332,
+      "aantal_partijen": 2,
+      "lichtgesteldheid": "Duisternis"
+    },
+    "raw_incident_data": {
+      "type": "Feature",
+      "properties": {
+        "iconCategory": 1
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            5.1169426332,
+            52.1221903052
+          ],
+          [
+            5.1173744689,
+            52.1221568026
+          ],
+          [
+            5.1176440309,
+            52.1221205725
+          ],
+          [
+            5.1178961585,
+            52.1220602575
+          ],
+          [
+            5.1182059536,
+            52.1219489422
+          ],
+          [
+            5.1186190138,
+            52.1217624898
+          ],
+          [
+            5.1202310215,
+            52.1209859992
+          ],
+          [
+            5.1209283958,
+            52.1206654768
+          ],
+          [
+            5.1217625628,
+            52.1203141243
+          ],
+          [
+            5.1223392377,
+            52.1200914847
+          ],
+          [
+            5.1226839016,
+            52.1199641072
+          ]
+        ]
+      },
+      "source_region": 11
+    }
+  }
+]
