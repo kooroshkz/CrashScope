@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrashScope - Live Traffic Incident Analysis</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="" />
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #D81E05 0%, #8B0000 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #D81E05;
+        }
+
+        .fetch-button {
+            background: linear-gradient(135deg, #D81E05 0%, #8B0000 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(216, 30, 5, 0.4);
+        }
+
+        .fetch-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(216, 30, 5, 0.5);
+        }
+
+        .fetch-button:active {
+            transform: translateY(0);
+        }
+
+        .fetch-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .map-container {
+            flex: 1;
+            margin: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            background: white;
+            position: relative;
+            min-height: 600px;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            min-height: 600px;
+            background: #ddd;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .info-panel h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .info-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-stat:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 0;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #D81E05 0%, #8B0000 100%);
+            color: white;
+            padding: 24px 30px;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .close {
+            color: white;
+            font-size: 32px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: transform 0.2s;
+            line-height: 1;
+        }
+
+        .close:hover {
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            font-size: 18px;
+            color: #D81E05;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #D81E05;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ai-report-content p {
+            margin: 0;
+            line-height: 1.8;
+        }
+
+        .ai-report-content strong {
+            color: #D81E05;
+            font-weight: 700;
+        }
+
+        .ai-report-content em {
+            font-style: italic;
+            color: #555;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .risk-high {
+            background: #fee;
+            color: #d32f2f;
+        }
+
+        .risk-medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .risk-low {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .prediction-card {
+            background: linear-gradient(135deg, #D81E05 0%, #8B0000 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .prediction-card h4 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+
+        .prediction-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .confidence {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 3000;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">CrashScope</div>
+        <button class="fetch-button" id="fetchButton" onclick="fetchIncidents()">
+            Look for Live Accidents
+        </button>
+    </div>
+
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div class="info-panel" id="infoPanel" style="display: none;">
+        <h3>Live Statistics</h3>
+        <div class="info-stat">
+            <span class="info-label">Total Incidents</span>
+            <span class="info-value" id="totalIncidents">0</span>
+        </div>
+        <div class="info-stat">
+            <span class="info-label">High Risk</span>
+            <span class="info-value" style="color: #d32f2f;" id="highRisk">0</span>
+        </div>
+        <div class="info-stat">
+            <span class="info-label">Medium Risk</span>
+            <span class="info-value" style="color: #f57c00;" id="mediumRisk">0</span>
+        </div>
+        <div class="info-stat">
+            <span class="info-label">Low Risk</span>
+            <span class="info-value" style="color: #388e3c;" id="lowRisk">0</span>
+        </div>
+    </div>
+
+    <div id="incidentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Incident Details & ML Analysis</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <footer style="background: rgba(255, 255, 255, 0.95); padding: 20px 40px; margin-top: 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #666; font-size: 14px;">Powered by</span>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/TomTom_logo.svg/2560px-TomTom_logo.svg.png" alt="TomTom" style="height: 24px;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; color: #666; font-size: 14px;">
+            <span>Made by Koorosh Komeili Zadeh</span>
+            <a href="https://github.com/kooroshkz" target="_blank" style="display: flex; align-items: center; gap: 5px; color: #333; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#D81E05'" onmouseout="this.style.color='#333'">
+                <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+                github.com/kooroshkz
+            </a>
+        </div>
+    </footer>
+
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <script>
+        console.log('Leaflet loaded:', typeof L !== 'undefined');
+        
+        // Wait for DOM to be ready
+        let map;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing map...');
+            
+            try {
+                // Initialize map centered on Netherlands
+                map = L.map('map', {
+                    center: [52.1326, 5.2913],
+                    zoom: 7,
+                    minZoom: 6,
+                    maxZoom: 18
+                });
+                
+                console.log('Map initialized');
+
+                // Add OpenStreetMap tiles
+                const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 18
+                });
+                
+                tileLayer.on('loading', function() {
+                    console.log('Tiles loading...');
+                });
+                
+                tileLayer.on('load', function() {
+                    console.log('Tiles loaded!');
+                });
+                
+                tileLayer.on('tileerror', function(error) {
+                    console.error('Tile error:', error);
+                });
+                
+                tileLayer.addTo(map);
+                
+                // Force map to invalidate size after load
+                setTimeout(function() {
+                    map.invalidateSize();
+                    console.log('Map size invalidated');
+                }, 200);
+                
+            } catch (error) {
+                console.error('Error initializing map:', error);
+            }
+        });
+
+        
+        let markers = [];
+        let incidents = [];
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            notificationText.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        async function fetchIncidents() {
+            const button = document.getElementById('fetchButton');
+            button.disabled = true;
+            button.innerHTML = '<span class="loading"></span>Fetching Incidents...';
+
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            try {
+                const response = await fetch('/api/fetch-incidents');
+                const data = await response.json();
+
+                if (data.success) {
+                    incidents = data.incidents;
+                    
+                    if (incidents.length === 0) {
+                        showNotification('No live incidents found at this time', 'error');
+                    } else {
+                        showNotification(`Found ${incidents.length} live incidents`, 'success');
+                        
+                        // Update statistics
+                        updateStatistics(incidents);
+                        
+                        // Add markers to map
+                        incidents.forEach((incident, index) => {
+                            const icon = L.divIcon({
+                                className: 'custom-marker',
+                                html: `<div style="
+                                    background: ${getRiskColor(incident.risk_level)};
+                                    width: 30px;
+                                    height: 30px;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    color: white;
+                                    font-weight: bold;
+                                    font-size: 14px;
+                                ">${index + 1}</div>`,
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 15]
+                            });
+
+                            const marker = L.marker(
+                                [incident.coordinates.lat, incident.coordinates.lon],
+                                { icon: icon }
+                            ).addTo(map);
+
+                            marker.on('click', () => showIncidentDetails(incident));
+                            markers.push(marker);
+                        });
+
+                        // Fit map to show all markers
+                        if (markers.length > 0) {
+                            const group = L.featureGroup(markers);
+                            map.fitBounds(group.getBounds().pad(0.1));
+                        }
+                    }
+                } else {
+                    showNotification('Error fetching incidents: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Network error: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = 'Look for Live Accidents';
+            }
+        }
+
+        function getRiskColor(riskLevel) {
+            const colors = {
+                'High': '#d32f2f',
+                'Medium': '#f57c00',
+                'Low': '#388e3c'
+            };
+            return colors[riskLevel] || '#757575';
+        }
+
+        function updateStatistics(incidents) {
+            const stats = {
+                total: incidents.length,
+                high: incidents.filter(i => i.risk_level === 'High').length,
+                medium: incidents.filter(i => i.risk_level === 'Medium').length,
+                low: incidents.filter(i => i.risk_level === 'Low').length
+            };
+
+            document.getElementById('totalIncidents').textContent = stats.total;
+            document.getElementById('highRisk').textContent = stats.high;
+            document.getElementById('mediumRisk').textContent = stats.medium;
+            document.getElementById('lowRisk').textContent = stats.low;
+            document.getElementById('infoPanel').style.display = 'block';
+        }
+
+        function showIncidentDetails(incident) {
+            const pred = incident.predictions || {};
+            
+            const modalBody = document.getElementById('modalBody');
+            modalBody.innerHTML = `
+                <div class="detail-section">
+                    <h3>Location Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Location</div>
+                            <div class="detail-value">${incident.location}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Coordinates</div>
+                            <div class="detail-value">${incident.coordinates.lat.toFixed(4)}°N, ${incident.coordinates.lon.toFixed(4)}°E</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Road Type</div>
+                            <div class="detail-value">${incident.road_type}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Speed Limit</div>
+                            <div class="detail-value">${incident.speed_limit} km/h</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Risk Assessment</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Risk Level</div>
+                            <div class="detail-value">
+                                <span class="risk-badge risk-${incident.risk_level.toLowerCase()}">${incident.risk_level}</span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Risk Score</div>
+                            <div class="detail-value">${incident.risk_score}/10</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Parties Involved</div>
+                            <div class="detail-value">${incident.parties_involved}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Time Period</div>
+                            <div class="detail-value">${incident.time_period}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Weather Conditions</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Condition</div>
+                            <div class="detail-value">${incident.weather}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Temperature</div>
+                            <div class="detail-value">${incident.temperature.toFixed(1)}°C</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Lighting</div>
+                            <div class="detail-value">${incident.time_period === 'Night' || incident.time_period === 'Evening' || incident.is_night ? 'Dark' : 'Daylight'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Precipitation</div>
+                            <div class="detail-value">${incident.precipitation ? incident.precipitation.toFixed(1) + ' mm' : '0 mm'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Wind Speed</div>
+                            <div class="detail-value">${incident.wind_speed ? incident.wind_speed.toFixed(1) + ' km/h' : 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Machine Learning Predictions</h3>
+                    <div class="detail-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        ${pred.severity ? `
+                        <div class="prediction-card" style="background: linear-gradient(135deg, #D81E05 0%, #8B0000 100%); color: white; padding: 15px; border-radius: 12px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Predicted Severity</h4>
+                            <div class="prediction-value" style="font-size: 24px; font-weight: 700; margin-bottom: 5px;">${pred.severity}</div>
+                            <div class="confidence" style="font-size: 12px; opacity: 0.85;">Confidence: ${(pred.severity_confidence * 100).toFixed(1)}%</div>
+                        </div>
+                        ` : ''}
+                        ${pred.accident_type ? `
+                        <div class="prediction-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px; border-radius: 12px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Predicted Type</h4>
+                            <div class="prediction-value" style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">${pred.accident_type}</div>
+                            <div class="confidence" style="font-size: 12px; opacity: 0.85;">Confidence: ${(pred.type_confidence * 100).toFixed(1)}%</div>
+                        </div>
+                        ` : ''}
+                        ${pred.location_risk ? `
+                        <div class="prediction-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 15px; border-radius: 12px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Location Risk</h4>
+                            <div class="prediction-value" style="font-size: 24px; font-weight: 700; margin-bottom: 5px;">${pred.location_risk}</div>
+                            <div class="confidence" style="font-size: 12px; opacity: 0.85;">Confidence: ${(pred.risk_confidence * 100).toFixed(1)}%</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${pred.estimated_clearance || pred.traffic_flow_impact || pred.impact_radius_km ? `
+                <div class="detail-section">
+                    <h3>Impact Analysis</h3>
+                    <div class="detail-grid">
+                        ${pred.estimated_clearance ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Estimated Clearance</div>
+                            <div class="detail-value">${pred.estimated_clearance}</div>
+                        </div>
+                        ` : ''}
+                        ${pred.impact_radius_km ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Impact Radius</div>
+                            <div class="detail-value">${pred.impact_radius_km} km</div>
+                        </div>
+                        ` : ''}
+                        ${pred.traffic_flow_impact ? `
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-label">Traffic Flow Impact</div>
+                            <div class="detail-value">${pred.traffic_flow_impact}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${incident.ai_report ? `
+                <div class="detail-section">
+                    <h3>Predictive Report</h3>
+                    <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8;">
+                        <div class="ai-report-content" style="font-size: 14px; color: #333;">${marked.parse(incident.ai_report)}</div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #999; font-style: italic;">
+                        Generated by AI based on real-time data and ML predictions
+                    </div>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById('incidentModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('incidentModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('incidentModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -79,15 +79,15 @@ class WeatherFeatureExtractor:
         return features
     
     def _map_weather_condition(self, weather_code: int) -> str:
-        """Map weather code to Dutch weather conditions."""
+        """Map weather code to English weather conditions."""
         if weather_code in [61, 63, 65, 80, 81, 82]:  # Rain
-            return 'Regen'
+            return 'Rainy'
         elif weather_code in [45, 48]:  # Fog
-            return 'Mist'
+            return 'Foggy'
         elif weather_code in [71, 73, 75, 77, 85, 86]:  # Snow
-            return 'Sneeuw'
+            return 'Snowy'
         else:  # Clear/cloudy
-            return 'Droog'
+            return 'Clear'
     
     def _get_default_weather(self) -> Dict:
         """Get default weather values when API fails."""
@@ -96,6 +96,6 @@ class WeatherFeatureExtractor:
             'precipitation': 0,
             'wind_speed': 10,
             'weather_code': 1,
-            'weather_condition': 'Droog',
+            'weather_condition': 'Clear',
             'is_wet': False
         }

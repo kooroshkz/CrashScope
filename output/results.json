@@ -26,10 +26,10 @@
     "environmental_conditions": {
       "weather": {
         "condition": "Droog",
-        "temperature_celsius": 2.7,
+        "temperature_celsius": 2.5,
         "precipitation_mm": 0.0,
-        "wind_speed_kmh": 11.9,
-        "weather_code": 0,
+        "wind_speed_kmh": 10.4,
+        "weather_code": 2,
         "is_wet_conditions": false
       },
       "temporal": {
@@ -67,15 +67,15 @@
       "lichtgesteldheid": "Duisternis",
       "wegsoort": "service",
       "weather_condition": "Droog",
-      "temperature": 2.7,
+      "temperature": 2.5,
       "is_weekend": false,
       "is_rush_hour": false
     },
     "complete_feature_set": {
-      "temperature": 2.7,
+      "temperature": 2.5,
       "precipitation": 0.0,
-      "wind_speed": 11.9,
-      "weather_code": 0,
+      "wind_speed": 10.4,
+      "weather_code": 2,
       "weather_condition": "Droog",
       "is_wet": false,
       "hour": 1,
