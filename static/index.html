@@ -483,6 +483,9 @@
         
         let markers = [];
         let incidents = [];
+        let enrichedData = {};  // Cache for enriched incident data
+        let aiReportsCache = {};  // Cache for AI reports
+        let reportsLoading = new Set();  // Track which reports are being loaded
 
         function showNotification(message, type = 'success') {
             const notification = document.getElementById('notification');
@@ -501,9 +504,12 @@
             button.disabled = true;
             button.innerHTML = '<span class="loading"></span>Fetching Incidents...';
 
-            // Clear existing markers
+            // Clear existing markers and cache
             markers.forEach(marker => marker.remove());
             markers = [];
+            enrichedData = {};
+            aiReportsCache = {};
+            reportsLoading.clear();
 
             try {
                 const response = await fetch('/api/fetch-incidents');
@@ -517,15 +523,13 @@
                     } else {
                         showNotification(`Found ${incidents.length} live incidents`, 'success');
                         
-                        // Update statistics
-                        updateStatistics(incidents);
-                        
-                        // Add markers to map
+                        // Add markers to map IMMEDIATELY with gray color (loading state)
                         incidents.forEach((incident, index) => {
                             // Create custom marker element
                             const markerElement = document.createElement('div');
+                            markerElement.id = `marker-${incident.id}`;
                             markerElement.style.cssText = `
-                                background: ${getRiskColor(incident.risk_level)};
+                                background: #757575;
                                 width: 30px;
                                 height: 30px;
                                 border-radius: 50%;
@@ -538,6 +542,7 @@
                                 font-weight: bold;
                                 font-size: 14px;
                                 cursor: pointer;
+                                transition: background 0.3s ease;
                             `;
                             markerElement.textContent = index + 1;
 
@@ -545,7 +550,7 @@
                                 .setLngLat([incident.coordinates.lon, incident.coordinates.lat])
                                 .addTo(map);
 
-                            markerElement.addEventListener('click', () => showIncidentDetails(incident));
+                            markerElement.addEventListener('click', () => showIncidentDetails(incident, index));
                             markers.push(marker);
                         });
 
@@ -557,6 +562,16 @@
                             });
                             map.fitBounds(bounds, {padding: 50});
                         }
+                        
+                        // Update placeholder statistics
+                        document.getElementById('totalIncidents').textContent = incidents.length;
+                        document.getElementById('highRisk').textContent = '...';
+                        document.getElementById('mediumRisk').textContent = '...';
+                        document.getElementById('lowRisk').textContent = '...';
+                        document.getElementById('infoPanel').style.display = 'block';
+                        
+                        // Enrich incidents in the background
+                        enrichIncidentsInBackground();
                     }
                 } else {
                     showNotification('Error fetching incidents: ' + data.error, 'error');
@@ -568,6 +583,73 @@
                 button.innerHTML = 'Look for Live Accidents';
             }
         }
+        
+        async function enrichIncidentsInBackground() {
+            // Enrich incidents one by one with weather, geocoding, ML predictions
+            for (let i = 0; i < incidents.length; i++) {
+                const incident = incidents[i];
+                try {
+                    const response = await fetch(`/api/enrich-incident/${incident.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(incident)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        enrichedData[incident.id] = data.incident;
+                        
+                        // Update marker color based on risk level
+                        const markerElement = document.getElementById(`marker-${incident.id}`);
+                        if (markerElement) {
+                            markerElement.style.background = getRiskColor(data.incident.risk_level);
+                        }
+                        
+                        console.log(`Enriched incident ${i + 1}/${incidents.length}`);
+                        
+                        // Update statistics after each enrichment
+                        updateStatisticsFromEnriched();
+                    }
+                } catch (error) {
+                    console.error(`Error enriching incident ${incident.id}:`, error);
+                }
+            }
+            console.log('All incidents enriched');
+            
+            // Now load AI reports in background
+            loadAIReportsInBackground();
+        }
+        
+        async function loadAIReportsInBackground() {
+            // Load AI reports one by one in the background
+            for (let i = 0; i < incidents.length; i++) {
+                const incident = incidents[i];
+                const enriched = enrichedData[incident.id];
+                
+                if (!enriched) continue;
+                
+                try {
+                    const response = await fetch(`/api/generate-report/${incident.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(enriched)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        aiReportsCache[incident.id] = data.ai_report;
+                        console.log(`AI report loaded for incident ${i + 1}/${incidents.length}`);
+                    }
+                } catch (error) {
+                    console.error(`Error loading AI report for ${incident.id}:`, error);
+                }
+            }
+            console.log('All AI reports loaded');
+        }
 
         function getRiskColor(riskLevel) {
             const colors = {
@@ -578,12 +660,13 @@
             return colors[riskLevel] || '#757575';
         }
 
-        function updateStatistics(incidents) {
+        function updateStatisticsFromEnriched() {
+            const enrichedIncidents = Object.values(enrichedData);
             const stats = {
                 total: incidents.length,
-                high: incidents.filter(i => i.risk_level === 'High').length,
-                medium: incidents.filter(i => i.risk_level === 'Medium').length,
-                low: incidents.filter(i => i.risk_level === 'Low').length
+                high: enrichedIncidents.filter(i => i.risk_level === 'High').length,
+                medium: enrichedIncidents.filter(i => i.risk_level === 'Medium').length,
+                low: enrichedIncidents.filter(i => i.risk_level === 'Low').length
             };
 
             document.getElementById('totalIncidents').textContent = stats.total;
@@ -593,29 +676,106 @@
             document.getElementById('infoPanel').style.display = 'block';
         }
 
-        function showIncidentDetails(incident) {
-            const pred = incident.predictions || {};
-            
+        async function showIncidentDetails(incident, index) {
             const modalBody = document.getElementById('modalBody');
+            
+            // Check if incident is enriched
+            const enriched = enrichedData[incident.id];
+            
+            if (!enriched) {
+                // Show loading state for entire modal
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <span class="loading"></span>
+                        <p style="color: #666; margin-top: 20px; font-size: 16px;">Loading incident details...</p>
+                        <p style="color: #999; margin-top: 10px; font-size: 14px;">Fetching weather data, road info, and ML predictions</p>
+                    </div>
+                `;
+                document.getElementById('incidentModal').style.display = 'block';
+                
+                // Try to enrich now if not already in progress
+                if (!reportsLoading.has(incident.id)) {
+                    reportsLoading.add(incident.id);
+                    try {
+                        const response = await fetch(`/api/enrich-incident/${incident.id}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(incident)
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            enrichedData[incident.id] = data.incident;
+                            
+                            // Update marker color
+                            const markerElement = document.getElementById(`marker-${incident.id}`);
+                            if (markerElement) {
+                                markerElement.style.background = getRiskColor(data.incident.risk_level);
+                            }
+                            
+                            // Refresh modal with enriched data
+                            showIncidentDetails(incident, index);
+                        }
+                    } catch (error) {
+                        console.error(`Error enriching incident:`, error);
+                        modalBody.innerHTML = `
+                            <div style="text-align: center; padding: 40px;">
+                                <p style="color: #d32f2f; font-size: 16px;">Error loading incident details</p>
+                                <p style="color: #666; margin-top: 10px;">${error.message}</p>
+                            </div>
+                        `;
+                    } finally {
+                        reportsLoading.delete(incident.id);
+                    }
+                }
+                return;
+            }
+            
+            // Use enriched data for display
+            const pred = enriched.predictions || {};
+            
+            // Show loading state for AI report if not yet loaded
+            const aiReport = aiReportsCache[incident.id];
+            const aiReportSection = aiReport 
+                ? `
+                <div class="detail-section">
+                    <h3>Predictive Report</h3>
+                    <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8;">
+                        <div class="ai-report-content" style="font-size: 14px; color: #333;">${marked.parse(aiReport)}</div>
+                    </div>
+                </div>
+                `
+                : `
+                <div class="detail-section" id="aiReportSection-${incident.id}">
+                    <h3>Predictive Report</h3>
+                    <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8; text-align: center;">
+                        <span class="loading"></span>
+                        <span style="color: #666; margin-left: 10px;">Generating AI report...</span>
+                    </div>
+                </div>
+                `;
+            
             modalBody.innerHTML = `
                 <div class="detail-section">
                     <h3>Location Information</h3>
                     <div class="detail-grid">
                         <div class="detail-item">
                             <div class="detail-label">Location</div>
-                            <div class="detail-value">${incident.location}</div>
+                            <div class="detail-value">${enriched.location}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Coordinates</div>
-                            <div class="detail-value">${incident.coordinates.lat.toFixed(4)}°N, ${incident.coordinates.lon.toFixed(4)}°E</div>
+                            <div class="detail-value">${enriched.coordinates.lat.toFixed(4)}°N, ${enriched.coordinates.lon.toFixed(4)}°E</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Road Type</div>
-                            <div class="detail-value">${incident.road_type}</div>
+                            <div class="detail-value">${enriched.road_type}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Speed Limit</div>
-                            <div class="detail-value">${incident.speed_limit} km/h</div>
+                            <div class="detail-value">${enriched.speed_limit} km/h</div>
                         </div>
                     </div>
                 </div>
@@ -626,20 +786,20 @@
                         <div class="detail-item">
                             <div class="detail-label">Risk Level</div>
                             <div class="detail-value">
-                                <span class="risk-badge risk-${incident.risk_level.toLowerCase()}">${incident.risk_level}</span>
+                                <span class="risk-badge risk-${enriched.risk_level.toLowerCase()}">${enriched.risk_level}</span>
                             </div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Risk Score</div>
-                            <div class="detail-value">${incident.risk_score}/10</div>
+                            <div class="detail-value">${enriched.risk_score}/10</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Parties Involved</div>
-                            <div class="detail-value">${incident.parties_involved}</div>
+                            <div class="detail-value">${enriched.parties_involved}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Time Period</div>
-                            <div class="detail-value">${incident.time_period}</div>
+                            <div class="detail-value">${enriched.time_period}</div>
                         </div>
                     </div>
                 </div>
@@ -649,23 +809,23 @@
                     <div class="detail-grid">
                         <div class="detail-item">
                             <div class="detail-label">Condition</div>
-                            <div class="detail-value">${incident.weather}</div>
+                            <div class="detail-value">${enriched.weather}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Temperature</div>
-                            <div class="detail-value">${incident.temperature.toFixed(1)}°C</div>
+                            <div class="detail-value">${enriched.temperature.toFixed(1)}°C</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Lighting</div>
-                            <div class="detail-value">${incident.time_period === 'Night' || incident.time_period === 'Evening' || incident.is_night ? 'Dark' : 'Daylight'}</div>
+                            <div class="detail-value">${enriched.time_period === 'Night' || enriched.time_period === 'Evening' || enriched.is_night ? 'Dark' : 'Daylight'}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Precipitation</div>
-                            <div class="detail-value">${incident.precipitation ? incident.precipitation.toFixed(1) + ' mm' : '0 mm'}</div>
+                            <div class="detail-value">${enriched.precipitation ? enriched.precipitation.toFixed(1) + ' mm' : '0 mm'}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Wind Speed</div>
-                            <div class="detail-value">${incident.wind_speed ? incident.wind_speed.toFixed(1) + ' km/h' : 'N/A'}</div>
+                            <div class="detail-value">${enriched.wind_speed ? enriched.wind_speed.toFixed(1) + ' km/h' : 'N/A'}</div>
                         </div>
                     </div>
                 </div>
@@ -723,17 +883,53 @@
                 </div>
                 ` : ''}
 
-                ${incident.ai_report ? `
-                <div class="detail-section">
-                    <h3>Predictive Report</h3>
-                    <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8;">
-                        <div class="ai-report-content" style="font-size: 14px; color: #333;">${marked.parse(incident.ai_report)}</div>
-                    </div>
-                </div>
-                ` : ''}
+                ${aiReportSection}
             `;
 
             document.getElementById('incidentModal').style.display = 'block';
+            
+            // If AI report not loaded yet, try to load it now
+            if (!aiReport && !reportsLoading.has(`ai-${incident.id}`)) {
+                reportsLoading.add(`ai-${incident.id}`);
+                try {
+                    const response = await fetch(`/api/generate-report/${incident.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(enriched)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        aiReportsCache[incident.id] = data.ai_report;
+                        
+                        // Update the modal if still open
+                        const reportSection = document.getElementById(`aiReportSection-${incident.id}`);
+                        if (reportSection) {
+                            reportSection.innerHTML = `
+                                <h3>Predictive Report</h3>
+                                <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8;">
+                                    <div class="ai-report-content" style="font-size: 14px; color: #333;">${marked.parse(data.ai_report)}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error loading AI report for ${incident.id}:`, error);
+                    const reportSection = document.getElementById(`aiReportSection-${incident.id}`);
+                    if (reportSection) {
+                        reportSection.innerHTML = `
+                            <h3>Predictive Report</h3>
+                            <div style="background: #f8f9fa; border-left: 4px solid #D81E05; padding: 20px; border-radius: 8px; line-height: 1.8;">
+                                <div style="color: #d32f2f;">Error generating report. Please try again.</div>
+                            </div>
+                        `;
+                    }
+                } finally {
+                    reportsLoading.delete(`ai-${incident.id}`);
+                }
+            }
         }
 
         function closeModal() {
