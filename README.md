@@ -1,15 +1,15 @@
 # CrashScope
 
-Real-time traffic incident analysis system combining live data APIs, machine learning predictions, and AI-powered reporting for comprehensive accident assessment in the Netherlands.
+Real-time traffic incident analysis system combining live data APIs, machine learning predictions, and AI-powered reporting for  accident assessment in the Netherlands.
 
 ## System Architecture
 
-### Data Pipeline
-- **Source**: Live traffic incidents from TomTom Traffic API
-- **Coverage**: 16 regional zones across Netherlands
-- **Enrichment**: Real-time weather data, geolocation reversal, temporal features
-- **Processing**: Feature engineering with ML-based risk assessment
-- **Output**: Interactive web dashboard with predictive analytics
+### Data Pipeline & Workflow
+1. **Live Data Ingestion**: TomTom Traffic API fetches real-time incidents in Netherlands
+2. **Feature Engineering**: Extract temporal features (hour, weekend, rush hour), fetch weather data
+3. **ML Prediction**: Pass features to trained models for severity, accident type, and location risk predictions
+4. **AI Report Generation**: NVIDIA Nemotron Nano 9B generates contextual incident reports using ML predictions
+5. **Web Visualization**: TomTom Maps SDK displays incidents with risk-colored markers and detailed modal views
 
 ### Machine Learning Models
 
@@ -17,58 +17,33 @@ Three classification models trained on 238,525 Dutch traffic accident records (2
 
 #### 1. Severity Predictor
 - **Algorithm**: Logistic Regression
-- **Classes**: Fatal, Injury, Property Damage
-- **Features**: Delay time, weather conditions, road type, lighting, time period
+- **Test Accuracy**: 72.88%
+- **Classes**: 3 levels - Fatal, Injury, Property Damage Only
+- **Dataset**: 190,829 training samples, 47,696 test samples
 
 #### 2. Accident Type Classifier
 - **Algorithm**: Logistic Regression  
-- **Classes**: Collision, Single-Vehicle, Pedestrian, Other
-- **Features**: Number of parties, location type, weather, temporal factors
+- **Test Accuracy**: 35.95%
+- **Classes**: 10 categories - Animal, Single-vehicle, Side collision, Head-on, Parked vehicle, Rear-end, Loose object, Unknown, Fixed object, Pedestrian
 
 #### 3. Location Risk Assessor
 - **Algorithm**: Random Forest (50 trees)
-- **Classes**: Urban, Rural
-- **Features**: Speed limit, built-up area indicator, road characteristics
+- **Test Accuracy**: 93.26%
+- **Classes**: 2 levels - Urban (Built-up area), Rural (Non-built-up area)
 
 ### API Integration
 
 #### TomTom Services
-1. **Traffic Incidents API** (`v5/incidentDetails`)
-   - Real-time accident data with geometry coordinates
-   - Category filtering for accident-specific incidents
-   - Bounding box queries for regional coverage
-
-2. **Reverse Geocoding API** (`v2/reverseGeocode`)
-   - Coordinate-to-address conversion
-   - Street-level location resolution
-   - Multilingual address formatting
-
-3. **Maps SDK** (`v6.25.0`)
-   - Interactive map visualization
-   - Custom marker rendering
-   - Dynamic viewport adjustment
+1. **Traffic Incidents API**: Real-time accident data
+2. **Reverse Geocoding API**: Street-level location resolution and coordinate-to-address conversion
+3. **Maps SDK**: Interactive map visualization
 
 #### Open-Meteo Weather API
-- Current weather conditions at incident coordinates
-- Temperature, precipitation, wind speed
-- Weather code translation (Clear/Rainy/Foggy/Snowy)
+Current weather conditions at incident coordinates with features Temperature, precipitation, wind speed
 
 #### OpenRouter AI API
-- **Model**: NVIDIA Nemotron Nano 9B v2 (free tier)
-- Generates concise predictive incident reports
-- Contextual analysis combining ML predictions and live data
-- Markdown-formatted output (80 words max)
+ NVIDIA Nemotron Nano 9B v2 (free tier) which Generates predictive incident reports
 
-## Technical Implementation
-
-### Backend (`app.py`)
-- **Framework**: Flask 3.1.2 with CORS support and RESTful API with single endpoint
-
-### Frontend (`static/index.html`)
-- **Mapping**: TomTom Maps SDK v6.25.0
-- **Visualization**: Custom risk-colored markers (High/Medium/Low)
-- **Rendering**: Markdown parsing with marked.js
-- **UI**: Responsive gradient design with modal detail views
 
 ## Configuration
 
@@ -86,22 +61,19 @@ OPENROUTER_API_KEY=<your_openrouter_api_key>
 **Records**: 382,421 raw → 238,525 processed  
 **Features**: 40 attributes including severity, type, location, weather, temporal data
 
-## Deployment
+## Setup and Deployment
 
+### Install Dependencies
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Run server
-python app.py
 ```
 
-Server runs on `http://localhost:5001` with debug mode enabled.
-
-## Model Performance
-
-| Model | Algorithm | Training Samples | Test Samples | Accuracy |
-|-------|-----------|-----------------|--------------|----------|
-| Severity | Logistic Regression | 190,829 | 47,696 | 100% |
-| Accident Type | Logistic Regression | 190,829 | 47,696 | 100% |
-| Location Risk | Random Forest | 190,829 | 47,696 | 100% |
+Create a `.env` file with your API keys:
+```bash
+TOMTOM_API_KEY=<your_tomtom_api_key>
+OPENROUTER_API_KEY=<your_openrouter_api_key>
+```
+Run web server
+```bash
+python app.py
+```
