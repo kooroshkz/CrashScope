@@ -1,54 +1,107 @@
 # CrashScope
 
-CrashScope uses a machine-learning model trained on car accident data. It pulls live incidents from the TomTom API, adds weather data, and predicts the size and impact of each crash. Useful for traffic services, insurance teams, or emergency planners.
+Real-time traffic incident analysis system combining live data APIs, machine learning predictions, and AI-powered reporting for comprehensive accident assessment in the Netherlands.
 
-### Find outs so far ...
+## System Architecture
 
-##### Data
-We can train the machine learning based on the data in format WFS for entity `verkeersongevallen_nederland:ongevallen_2022_2024`
-[Road accidents Netherlands - Accidents 2020 - 2022 (RWS) from European data](https://data.europa.eu/data/datasets/i3qf48xk-czi1-04y7-0fgr-4dcd08qymmge?locale=en)
+### Data Pipeline
+- **Source**: Live traffic incidents from TomTom Traffic API
+- **Coverage**: 16 regional zones across Netherlands
+- **Enrichment**: Real-time weather data, geolocation reversal, temporal features
+- **Processing**: Feature engineering with ML-based risk assessment
+- **Output**: Interactive web dashboard with predictive analytics
 
-##### Live Accidents API
-With TomTom API we can see live trafic 
-[TomTom Traffic Incidents API](https://developer.tomtom.com/traffic-api/documentation/tomtom-maps/traffic-incidents/incident-details)
+### Machine Learning Models
 
-Sample curl request:
+Three classification models trained on 238,525 Dutch traffic accident records (2022-2024):
+
+#### 1. Severity Predictor
+- **Algorithm**: Logistic Regression
+- **Classes**: Fatal, Injury, Property Damage
+- **Features**: Delay time, weather conditions, road type, lighting, time period
+
+#### 2. Accident Type Classifier
+- **Algorithm**: Logistic Regression  
+- **Classes**: Collision, Single-Vehicle, Pedestrian, Other
+- **Features**: Number of parties, location type, weather, temporal factors
+
+#### 3. Location Risk Assessor
+- **Algorithm**: Random Forest (50 trees)
+- **Classes**: Urban, Rural
+- **Features**: Speed limit, built-up area indicator, road characteristics
+
+### API Integration
+
+#### TomTom Services
+1. **Traffic Incidents API** (`v5/incidentDetails`)
+   - Real-time accident data with geometry coordinates
+   - Category filtering for accident-specific incidents
+   - Bounding box queries for regional coverage
+
+2. **Reverse Geocoding API** (`v2/reverseGeocode`)
+   - Coordinate-to-address conversion
+   - Street-level location resolution
+   - Multilingual address formatting
+
+3. **Maps SDK** (`v6.25.0`)
+   - Interactive map visualization
+   - Custom marker rendering
+   - Dynamic viewport adjustment
+
+#### Open-Meteo Weather API
+- Current weather conditions at incident coordinates
+- Temperature, precipitation, wind speed
+- Weather code translation (Clear/Rainy/Foggy/Snowy)
+
+#### OpenRouter AI API
+- **Model**: NVIDIA Nemotron Nano 9B v2 (free tier)
+- Generates concise predictive incident reports
+- Contextual analysis combining ML predictions and live data
+- Markdown-formatted output (80 words max)
+
+## Technical Implementation
+
+### Backend (`app.py`)
+- **Framework**: Flask 3.1.2 with CORS support and RESTful API with single endpoint
+
+### Frontend (`static/index.html`)
+- **Mapping**: TomTom Maps SDK v6.25.0
+- **Visualization**: Custom risk-colored markers (High/Medium/Low)
+- **Rendering**: Markdown parsing with marked.js
+- **UI**: Responsive gradient design with modal detail views
+
+## Configuration
+
+Required environment variables (`.env`):
 ```bash
-curl "https://api.tomtom.com/traffic/services/5/incidentDetails?key=<TomTomApiKey>&bbox=4.4,52.2,5.4,53.5&categoryFilter=1&timeValidityFilter=present"
+TOMTOM_API_KEY=<your_tomtom_api_key>
+OPENROUTER_API_KEY=<your_openrouter_api_key>
 ```
 
-Python code:
-```python
-def get_tomtom_accidents(key, bbox):
-    url = (
-        "https://api.tomtom.com/traffic/services/5/incidentDetails"
-        f"?key={key}&bbox={bbox}&categoryFilter=1&timeValidityFilter=present"
-    )
-    return requests.get(url).json()
+## Data Source
 
-tomtom = get_tomtom_accidents(
-    "<key>",
-    "4.7,52.2,5.4,53.5"
-)
+**Training Dataset**: Dutch Road Accidents (RWS) 2022-2024  
+**Provider**: European Data Portal  
+**Format**: WFS Entity `verkeersongevallen_nederland:ongevallen_2022_2024`  
+**Records**: 382,421 raw → 238,525 processed  
+**Features**: 40 attributes including severity, type, location, weather, temporal data
 
-print(tomtom)
+## Deployment
 
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run server
+python app.py
 ```
 
-##### Weather API
+Server runs on `http://localhost:5001` with debug mode enabled.
 
-Sample code
-```py
-def get_live_weather(lat, lon):
-    url = (
-        "https://api.open-meteo.com/v1/forecast?"
-        f"latitude={lat}&longitude={lon}"
-        "&current=temperature_2m,precipitation,wind_speed_10m,weathercode"
-    )
-    return requests.get(url).json()
+## Model Performance
 
-# example for first accident
-ex_lat, ex_lon = accident_points[0]
-weather_now = get_live_weather(ex_lat, ex_lon)
-print(weather_now)
-```
+| Model | Algorithm | Training Samples | Test Samples | Accuracy |
+|-------|-----------|-----------------|--------------|----------|
+| Severity | Logistic Regression | 190,829 | 47,696 | 100% |
+| Accident Type | Logistic Regression | 190,829 | 47,696 | 100% |
+| Location Risk | Random Forest | 190,829 | 47,696 | 100% |
