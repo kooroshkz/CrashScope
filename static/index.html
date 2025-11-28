@@ -410,20 +410,15 @@
         </div>
     </div>
 
-    <footer style="background: rgba(255, 255, 255, 0.95); padding: 20px 40px; margin-top: 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="color: #666; font-size: 14px;">Powered by</span>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/TomTom_logo.svg/2560px-TomTom_logo.svg.png" alt="TomTom" style="height: 16px;">
+    <footer style="background: rgba(255, 255, 255, 0.95); padding: 20px 40px; margin-top: 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #666; font-size: 14px;">Powered by</span>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/TomTom_logo.svg/2560px-TomTom_logo.svg.png" alt="TomTom" style="height: 16px;">
+            </div>
+            <div style="flex: 1; text-align: center;"><!-- LAST_UPDATE_PLACEHOLDER --></div>
+            <div style="width: 120px;"></div>
         </div>
-        <!-- <div style="display: flex; align-items: center; gap: 8px; color: #666; font-size: 14px;">
-            <span>Made by Koorosh Komeili Zadeh</span>
-            <a href="https://github.com/kooroshkz" target="_blank" style="display: flex; align-items: center; gap: 5px; color: #333; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#D81E05'" onmouseout="this.style.color='#333'">
-                <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-                </svg>
-                github.com/kooroshkz
-            </a>
-        </div> -->
     </footer>
 
     <div class="notification" id="notification">
@@ -435,12 +430,23 @@
         let map;
         let TOMTOM_API_KEY = '';
         
-        // Fetch configuration from backend
+        // Check if running on GitHub Pages or locally
+        const IS_GITHUB_PAGES = window.location.hostname.includes('github.io');
+        
+        // Fetch configuration from backend or static data
         async function initializeApp() {
             try {
-                const configResponse = await fetch('/api/config');
-                const config = await configResponse.json();
-                TOMTOM_API_KEY = config.tomtomApiKey;
+                if (IS_GITHUB_PAGES) {
+                    // Load from static JSON file on GitHub Pages
+                    const response = await fetch('incidents_data.json');
+                    const data = await response.json();
+                    TOMTOM_API_KEY = data.tomtom_api_key;
+                } else {
+                    // Load from API on local/server deployment
+                    const configResponse = await fetch('/api/config');
+                    const config = await configResponse.json();
+                    TOMTOM_API_KEY = config.tomtomApiKey;
+                }
                 
                 // Initialize map after getting API key
                 initializeMap();
@@ -512,8 +518,25 @@
             reportsLoading.clear();
 
             try {
-                const response = await fetch('/api/fetch-incidents');
-                const data = await response.json();
+                let data;
+                
+                if (IS_GITHUB_PAGES) {
+                    // Load pre-generated static data on GitHub Pages
+                    const response = await fetch('incidents_data.json');
+                    data = await response.json();
+                    
+                    // Pre-populate enriched data from static file
+                    data.incidents.forEach(incident => {
+                        enrichedData[incident.id] = incident;
+                        if (incident.ai_report) {
+                            aiReportsCache[incident.id] = incident.ai_report;
+                        }
+                    });
+                } else {
+                    // Use API on local/server deployment
+                    const response = await fetch('/api/fetch-incidents');
+                    data = await response.json();
+                }
 
                 if (data.success) {
                     incidents = data.incidents;
@@ -523,13 +546,17 @@
                     } else {
                         showNotification(`Found ${incidents.length} live incidents`, 'success');
                         
-                        // Add markers to map IMMEDIATELY with gray color (loading state)
+                        // Add markers to map
                         incidents.forEach((incident, index) => {
+                            // Get risk level from enriched data or default to gray
+                            const enriched = enrichedData[incident.id];
+                            const riskColor = enriched ? getRiskColor(enriched.risk_level) : '#757575';
+                            
                             // Create custom marker element
                             const markerElement = document.createElement('div');
                             markerElement.id = `marker-${incident.id}`;
                             markerElement.style.cssText = `
-                                background: #757575;
+                                background: ${riskColor};
                                 width: 30px;
                                 height: 30px;
                                 border-radius: 50%;
@@ -563,15 +590,21 @@
                             map.fitBounds(bounds, {padding: 50});
                         }
                         
-                        // Update placeholder statistics
-                        document.getElementById('totalIncidents').textContent = incidents.length;
-                        document.getElementById('highRisk').textContent = '...';
-                        document.getElementById('mediumRisk').textContent = '...';
-                        document.getElementById('lowRisk').textContent = '...';
-                        document.getElementById('infoPanel').style.display = 'block';
-                        
-                        // Enrich incidents in the background
-                        enrichIncidentsInBackground();
+                        // Update statistics
+                        if (IS_GITHUB_PAGES) {
+                            // Use pre-generated data
+                            updateStatisticsFromEnriched();
+                        } else {
+                            // Show placeholders and enrich
+                            document.getElementById('totalIncidents').textContent = incidents.length;
+                            document.getElementById('highRisk').textContent = '...';
+                            document.getElementById('mediumRisk').textContent = '...';
+                            document.getElementById('lowRisk').textContent = '...';
+                            document.getElementById('infoPanel').style.display = 'block';
+                            
+                            // Enrich incidents in the background
+                            enrichIncidentsInBackground();
+                        }
                     }
                 } else {
                     showNotification('Error fetching incidents: ' + data.error, 'error');
@@ -585,6 +618,9 @@
         }
         
         async function enrichIncidentsInBackground() {
+            // Skip if on GitHub Pages (data already enriched)
+            if (IS_GITHUB_PAGES) return;
+            
             // Enrich incidents one by one with weather, geocoding, ML predictions
             for (let i = 0; i < incidents.length; i++) {
                 const incident = incidents[i];
@@ -623,6 +659,9 @@
         }
         
         async function loadAIReportsInBackground() {
+            // Skip if on GitHub Pages (AI reports already in cache)
+            if (IS_GITHUB_PAGES) return;
+            
             // Load AI reports one by one in the background
             for (let i = 0; i < incidents.length; i++) {
                 const incident = incidents[i];
@@ -683,6 +722,17 @@
             const enriched = enrichedData[incident.id];
             
             if (!enriched) {
+                // On GitHub Pages, this shouldn't happen, but handle it gracefully
+                if (IS_GITHUB_PAGES) {
+                    modalBody.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <p style="color: #d32f2f; font-size: 16px;">Incident data not available</p>
+                        </div>
+                    `;
+                    document.getElementById('incidentModal').style.display = 'block';
+                    return;
+                }
+                
                 // Show loading state for entire modal
                 modalBody.innerHTML = `
                     <div style="text-align: center; padding: 40px;">
@@ -888,8 +938,8 @@
 
             document.getElementById('incidentModal').style.display = 'block';
             
-            // If AI report not loaded yet, try to load it now
-            if (!aiReport && !reportsLoading.has(`ai-${incident.id}`)) {
+            // If AI report not loaded yet, try to load it now (skip on GitHub Pages)
+            if (!aiReport && !IS_GITHUB_PAGES && !reportsLoading.has(`ai-${incident.id}`)) {
                 reportsLoading.add(`ai-${incident.id}`);
                 try {
                     const response = await fetch(`/api/generate-report/${incident.id}`, {
