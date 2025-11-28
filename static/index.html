@@ -86,20 +86,18 @@
         }
 
         .map-container {
-            flex: 1;
             margin: 20px;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);
             background: white;
             position: relative;
-            min-height: 600px;
+            height: calc(100vh - 200px);
         }
 
         #map {
             height: 100%;
             width: 100%;
-            min-height: 600px;
             background: #ddd;
         }
 
@@ -434,6 +432,13 @@
                 });
                 
                 console.log('TomTom map initialized successfully');
+                
+                // Ensure map resizes properly
+                map.on('load', function() {
+                    setTimeout(function() {
+                        map.resize();
+                    }, 100);
+                });
                 
             } catch (error) {
                 console.error('Error initializing map:', error);

@@ -94,18 +94,8 @@ def fetch_incidents():
                     # Get ML predictions
                     predictions = ml_predictor.predict(features)
                     
-                    # Determine region from coordinates
-                    region = "Unknown"
-                    if 52.3 <= lat <= 52.4 and 4.8 <= lon <= 4.95:
-                        region = "Amsterdam"
-                    elif 52.0 <= lat <= 52.1 and 4.2 <= lon <= 4.4:
-                        region = "Den Haag"
-                    elif 52.05 <= lat <= 52.15 and 5.05 <= lon <= 5.15:
-                        region = "Utrecht"
-                    elif 51.4 <= lat <= 51.5 and 5.4 <= lon <= 5.5:
-                        region = "Eindhoven"
-                    elif 51.9 <= lat <= 52.0 and 4.4 <= lon <= 4.6:
-                        region = "Rotterdam"
+                    # Get readable address using reverse geocoding
+                    location = tomtom_client.reverse_geocode(lat, lon)
                     
                     # Calculate risk score based on features
                     risk_score = 5
@@ -131,7 +121,7 @@ def fetch_incidents():
                     incident_data = {
                         'id': f"incident_{lat:.4f}_{lon:.4f}",
                         'coordinates': {'lat': lat, 'lon': lon},
-                        'location': region,
+                        'location': location,
                         'risk_score': risk_score,
                         'risk_level': risk_level,
                         'road_type': features.get('road_type', 'unknown'),

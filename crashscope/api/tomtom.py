@@ -19,6 +19,7 @@ class TomTomClient:
         """
         self.api_key = api_key or Config.get_tomtom_api_key()
         self.base_url = "https://api.tomtom.com/traffic/services/5/incidentDetails"
+        self.geocoding_url = "https://api.tomtom.com/search/2/reverseGeocode"
     
     def fetch_incidents(self, bbox: str, 
                        language: str = "en-GB", 
@@ -86,3 +87,54 @@ class TomTomClient:
             
         except (KeyError, IndexError, TypeError):
             return None
+    
+    def reverse_geocode(self, lat: float, lon: float, timeout: int = 10) -> str:
+        """Convert coordinates to readable address using TomTom Reverse Geocoding.
+        
+        Args:
+            lat: Latitude
+            lon: Longitude
+            timeout: Request timeout in seconds
+            
+        Returns:
+            Formatted address string or "Unknown" if not found
+        """
+        url = f"{self.geocoding_url}/{lat},{lon}.json"
+        
+        params = {
+            'key': self.api_key,
+            'language': 'en-GB'
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            
+            if response.status_code != 200:
+                return "Unknown"
+            
+            data = response.json()
+            results = data.get('addresses', [])
+            
+            if not results:
+                return "Unknown"
+            
+            address = results[0].get('address', {})
+            
+            # Build formatted address
+            parts = []
+            if address.get('streetName'):
+                street = address.get('streetName')
+                if address.get('streetNumber'):
+                    street = f"{address.get('streetNumber')} {street}"
+                parts.append(street)
+            
+            if address.get('municipality'):
+                parts.append(address.get('municipality'))
+            
+            if address.get('countrySubdivision'):
+                parts.append(address.get('countrySubdivision'))
+            
+            return ', '.join(parts) if parts else address.get('freeformAddress', 'Unknown')
+            
+        except (requests.RequestException, ValueError, KeyError):
+            return "Unknown"
