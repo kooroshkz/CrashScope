@@ -433,10 +433,24 @@
     <script>
         // Wait for DOM to be ready
         let map;
-        const TOMTOM_API_KEY = 'YOUR_TOMTOM_API_KEY';
+        let TOMTOM_API_KEY = '';
         
-        // Wait for window to load to ensure TomTom SDK is ready
-        window.addEventListener('load', function() {
+        // Fetch configuration from backend
+        async function initializeApp() {
+            try {
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+                TOMTOM_API_KEY = config.tomtomApiKey;
+                
+                // Initialize map after getting API key
+                initializeMap();
+            } catch (error) {
+                console.error('Error fetching configuration:', error);
+            }
+        }
+        
+        // Initialize TomTom map
+        function initializeMap() {
             console.log('TomTom SDK loaded:', typeof tt !== 'undefined');
             console.log('Initializing TomTom map...');
             
@@ -461,7 +475,10 @@
             } catch (error) {
                 console.error('Error initializing map:', error);
             }
-        });
+        }
+        
+        // Wait for window to load to ensure TomTom SDK is ready
+        window.addEventListener('load', initializeApp);
 
         
         let markers = [];

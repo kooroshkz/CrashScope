@@ -173,6 +173,15 @@ def health():
     })
 
 
+@app.route('/api/config', methods=['GET'])
+def config():
+    """Provide frontend configuration"""
+    import os
+    return jsonify({
+        'tomtomApiKey': os.getenv('TOMTOM_API_KEY', '')
+    })
+
+
 if __name__ == '__main__':
     print("Starting CrashScope Web Application...")
     print("ML Models loaded:", ml_predictor.is_loaded())
