@@ -4,6 +4,9 @@ Real-time traffic incident analysis system combining live data APIs, machine lea
 
 ## System Architecture
 
+<img width="2001" height="1324" alt="image" src="https://github.com/user-attachments/assets/1029d69c-f344-46ba-a9fe-0df5bdb435c7" />
+
+
 ### Data Pipeline & Workflow
 1. **Live Data Ingestion**: TomTom Traffic API fetches real-time incidents in Netherlands
 2. **Feature Engineering**: Extract temporal features (hour, weekend, rush hour), fetch weather data
@@ -63,16 +66,11 @@ OPENROUTER_API_KEY=<your_openrouter_api_key>
 
 ## Setup and Deployment
 
-### Install Dependencies
+Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-Create a `.env` file with your API keys:
-```bash
-TOMTOM_API_KEY=<your_tomtom_api_key>
-OPENROUTER_API_KEY=<your_openrouter_api_key>
-```
 Run web server
 ```bash
 python app.py
